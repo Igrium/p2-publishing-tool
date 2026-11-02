@@ -60,7 +60,9 @@ set(SRC
         src/filedialogpreset.h
         src/bspentityelementparser.cpp
         src/bspentityelementparser.h
-        src/bspfilestructure.h)
+        src/bspfilestructure.h
+        src/scaledimagelabel.h
+        src/panelsplitter.h)
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/SpeedyKeyV")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/SpeedyKeyV")

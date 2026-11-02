@@ -3,6 +3,7 @@
 #include "bspentityelementparser.h"
 #include "bspfilestructure.h"
 #include "filedialogpreset.h"
+#include "panelsplitter.h"
 
 #include <QBuffer>
 #include <QCheckBox>
@@ -27,47 +28,71 @@ CAdvancedOptionsDialog::CAdvancedOptionsDialog( QWidget *pParent ) :
 
 	auto pDialogLayout = new QGridLayout( this );
 
-	auto pMediaGroupBox = new QGroupBox( tr( "Media" ), this );
+	// Media on top, Tags / Patch Notes below; every boundary is a draggable splitter.
+	auto pVerticalSplitter = createPanelSplitter( Qt::Vertical, this );
+
+	auto pMediaGroupBox = new QGroupBox( tr( "Media" ), pVerticalSplitter );
 
 	auto pMediaLayout = new QGridLayout( pMediaGroupBox );
 
-	m_pImagePreviewLabel = new QLabel( this );
-	m_pImagePreviewLabel->setMinimumSize( 256, 144 );
-	QPixmap tempMap = QPixmap( ":/resource/SampleImage.png" );
-	tempMap = tempMap.scaled( 239, 134, Qt::IgnoreAspectRatio );
-	m_pImagePreviewLabel->setPixmap( tempMap );
-	pMediaLayout->addWidget( m_pImagePreviewLabel, 0, 0 );
+	auto pMediaSplitter = createPanelSplitter( Qt::Horizontal, pMediaGroupBox );
 
-	m_pMediaListWidget = new QListWidget( this );
+	m_pImagePreviewLabel = new CScaledImageLabel( pMediaSplitter );
+	m_pImagePreviewLabel->setMinimumSize( 128, 72 );
+	m_pImagePreviewLabel->setSourcePixmap( QPixmap( ":/resource/SampleImage.png" ) );
+	pMediaSplitter->addWidget( m_pImagePreviewLabel );
+
+	m_pMediaListWidget = new QListWidget( pMediaSplitter );
 	m_pMediaListWidget->setSizePolicy( QSizePolicy( QSizePolicy::Expanding, QSizePolicy::Expanding ) );
+	m_pMediaListWidget->setMinimumWidth( 120 );
 	this->populateDefaultMediaListWidget();
 
-	pMediaLayout->addWidget( m_pMediaListWidget, 0, 1 );
+	pMediaSplitter->addWidget( m_pMediaListWidget );
+	pMediaSplitter->setStretchFactor( 0, 1 );
+	pMediaSplitter->setStretchFactor( 1, 1 );
+	pMediaSplitter->setSizes( { 256, 180 } );
 
-	pDialogLayout->addWidget( pMediaGroupBox, 0, 0, 1, 4 );
+	pMediaLayout->addWidget( pMediaSplitter, 0, 0 );
 
-	auto pTagsGroupBox = new QGroupBox( tr( "Tags" ), this );
+	pVerticalSplitter->addWidget( pMediaGroupBox );
+
+	auto pBottomSplitter = createPanelSplitter( Qt::Horizontal, pVerticalSplitter );
+
+	auto pTagsGroupBox = new QGroupBox( tr( "Tags" ), pBottomSplitter );
 
 	auto pTagsLayout = new QGridLayout( pTagsGroupBox );
 
-	m_pTagsListWidget = new QListWidget( this );
+	m_pTagsListWidget = new QListWidget( pTagsGroupBox );
 	m_pTagsListWidget->setSizePolicy( QSizePolicy( QSizePolicy::Expanding, QSizePolicy::Expanding ) );
+	m_pTagsListWidget->setMinimumSize( 160, 80 );
 	this->populateDefaultTagListWidget();
 
 	pTagsLayout->addWidget( m_pTagsListWidget, 0, 0 );
 
-	pDialogLayout->addWidget( pTagsGroupBox, 1, 0, 1, 3 );
+	pBottomSplitter->addWidget( pTagsGroupBox );
 
-	m_pPatchNoteGroupBox = new QGroupBox( tr( "Patch Notes" ), this );
+	m_pPatchNoteGroupBox = new QGroupBox( tr( "Patch Notes" ), pBottomSplitter );
 	m_pPatchNoteGroupBox->setDisabled( true );
 
 	auto pPatchNoteLayout = new QGridLayout( m_pPatchNoteGroupBox );
 
-	m_pPatchNoteTextEdit = new QTextEdit( this );
+	m_pPatchNoteTextEdit = new QTextEdit( m_pPatchNoteGroupBox );
+	m_pPatchNoteTextEdit->setMinimumSize( 120, 80 );
 
 	pPatchNoteLayout->addWidget( m_pPatchNoteTextEdit );
 
-	pDialogLayout->addWidget( m_pPatchNoteGroupBox, 1, 3, 1, 1 );
+	pBottomSplitter->addWidget( m_pPatchNoteGroupBox );
+	pBottomSplitter->setStretchFactor( 0, 1 );
+	pBottomSplitter->setStretchFactor( 1, 1 );
+	pBottomSplitter->setSizes( { 220, 220 } );
+
+	pVerticalSplitter->addWidget( pBottomSplitter );
+	pVerticalSplitter->setStretchFactor( 0, 1 );
+	pVerticalSplitter->setStretchFactor( 1, 1 );
+
+	pDialogLayout->addWidget( pVerticalSplitter, 0, 0, 2, 4 );
+	pDialogLayout->setRowStretch( 0, 1 );
+	pDialogLayout->setRowStretch( 1, 1 );
 
 	auto pPTIInstanceVisibilityGroupBox = new QGroupBox( this );
 
@@ -145,7 +170,7 @@ CAdvancedOptionsDialog::CAdvancedOptionsDialog( QWidget *pParent ) :
 	connect( m_pMediaListWidget, &QListWidget::itemClicked, this, [this]( QListWidgetItem *item )
 			 {
 				 if ( item->type() == IMAGE )
-					 m_pImagePreviewLabel->setPixmap( QPixmap( ( item->data( Qt::UserRole ).toString() ) ).scaled( 239, 134, Qt::IgnoreAspectRatio ) );
+					 m_pImagePreviewLabel->setSourcePixmap( QPixmap( item->data( Qt::UserRole ).toString() ) );
 			 } );
 
 	connect( m_pTagsListWidget, &QListWidget::itemDoubleClicked, this, [this]( QListWidgetItem *item )
@@ -356,88 +381,101 @@ CMapUploader::CMapUploader( QWidget *pParent ) :
 
 	auto pDialogLayout = new QGridLayout( this );
 
-	auto pPreviewTextLabel = new QLabel( tr( "Preview Image:" ), this );
+	// Thumbnail panel on the left, title/description/file panel on the right, split by a draggable handle.
+	auto pMainSplitter = createPanelSplitter( Qt::Horizontal, this );
 
-	pDialogLayout->addWidget( pPreviewTextLabel, 0, 0 );
+	auto pLeftPanel = new QWidget( pMainSplitter );
+	auto pLeftPanelLayout = new QVBoxLayout( pLeftPanel );
+	pLeftPanelLayout->setContentsMargins( 0, 0, 0, 0 );
 
-	QPixmap tempMap = QPixmap( ":/resource/SampleImage.png" );
-	tempMap = tempMap.scaled( 239, 134, Qt::IgnoreAspectRatio );
+	auto pPreviewTextLabel = new QLabel( tr( "Preview Image:" ), pLeftPanel );
 
-	m_pPreviewImageLabel = new QLabel( this );
-	m_pPreviewImageLabel->setPixmap( tempMap );
-	m_pPreviewImageLabel->setFixedSize( 239, 134 );
+	pLeftPanelLayout->addWidget( pPreviewTextLabel );
 
-	pDialogLayout->addWidget( m_pPreviewImageLabel, 1, 0 );
+	m_pPreviewImageLabel = new CScaledImageLabel( pLeftPanel );
+	m_pPreviewImageLabel->setSourcePixmap( QPixmap( ":/resource/SampleImage.png" ) );
+	m_pPreviewImageLabel->setMinimumSize( 160, 90 );
 
-	auto pThumbnailBrowseButton = new QPushButton( tr( "Browse..." ), this );
-	pThumbnailBrowseButton->setFixedSize( 239, 20 );
+	pLeftPanelLayout->addWidget( m_pPreviewImageLabel, 1 );
 
-	pDialogLayout->addWidget( pThumbnailBrowseButton, 2, 0 );
+	auto pThumbnailBrowseButton = new QPushButton( tr( "Browse..." ), pLeftPanel );
+	pThumbnailBrowseButton->setMinimumHeight( 20 );
 
-	m_pAdvancedOptionsButton = new QPushButton( tr( "Advanced Options." ), this );
-	m_pAdvancedOptionsButton->setFixedSize( 239, 40 );
+	pLeftPanelLayout->addWidget( pThumbnailBrowseButton );
+
+	m_pAdvancedOptionsButton = new QPushButton( tr( "Advanced Options." ), pLeftPanel );
+	m_pAdvancedOptionsButton->setMinimumHeight( 40 );
 	m_pAdvancedOptionsButton->setDisabled( true );
 	m_pAdvancedOptionsButton->setToolTip( "You need to select a BSP before you can open this menu." );
 
 	m_pAdvancedOptions = new CAdvancedOptionsDialog( this );
 
-	pDialogLayout->addWidget( m_pAdvancedOptionsButton, 3, 0 );
+	pLeftPanelLayout->addWidget( m_pAdvancedOptionsButton );
 
-	m_pSteamToSAgreement = new QCheckBox( tr( "I accept the terms of the Steam Workshop Contribution Agreement." ), this );
+	auto pAgreementButton = new QPushButton( tr( "View Agreement" ), pLeftPanel );
+	pAgreementButton->setMinimumHeight( 20 );
 
-	pDialogLayout->addWidget( m_pSteamToSAgreement, 4, 0, 1, 2 );
+	pLeftPanelLayout->addWidget( pAgreementButton );
 
-	auto pAgreementButton = new QPushButton( tr( "View Agreement" ), this );
-	pAgreementButton->setFixedSize( 239, 20 );
+	pMainSplitter->addWidget( pLeftPanel );
 
-	pDialogLayout->addWidget( pAgreementButton, 5, 0 );
-
-	auto pButtonBox = new QDialogButtonBox( Qt::Orientation::Horizontal, this );
-	m_pOKButton = pButtonBox->addButton( tr( "Upload" ), QDialogButtonBox::ApplyRole );
-	auto pCloseButton = pButtonBox->addButton( tr( "Cancel" ), QDialogButtonBox::RejectRole );
-	pDialogLayout->addWidget( pButtonBox, 6, 0, Qt::AlignLeft );
-
-	auto pTitleDesciptionLayout = new QVBoxLayout();
+	auto pRightPanel = new QWidget( pMainSplitter );
+	auto pTitleDesciptionLayout = new QVBoxLayout( pRightPanel );
+	pTitleDesciptionLayout->setContentsMargins( 0, 0, 0, 0 );
 	pTitleDesciptionLayout->setSpacing( 10 );
 
-	auto pTitleLabel = new QLabel( tr( "Title:" ), this );
+	auto pTitleLabel = new QLabel( tr( "Title:" ), pRightPanel );
 
 	pTitleDesciptionLayout->addWidget( pTitleLabel );
 
-	m_pTitleLine = new QLineEdit( this );
+	m_pTitleLine = new QLineEdit( pRightPanel );
 
 	pTitleDesciptionLayout->addWidget( m_pTitleLine );
 
-	auto pDesciptionLabel = new QLabel( tr( "Description:" ), this );
+	auto pDesciptionLabel = new QLabel( tr( "Description:" ), pRightPanel );
 
 	pTitleDesciptionLayout->addWidget( pDesciptionLabel );
 
-	m_pDescriptionTextEdit = new QTextEdit( this );
+	m_pDescriptionTextEdit = new QTextEdit( pRightPanel );
 	m_pDescriptionTextEdit->setMinimumHeight( 100 );
-	m_pDescriptionTextEdit->setMaximumHeight( 100 );
 
-	pTitleDesciptionLayout->addWidget( m_pDescriptionTextEdit );
+	pTitleDesciptionLayout->addWidget( m_pDescriptionTextEdit, 1 );
 
-	auto pFileLabel = new QLabel( tr( "File:" ), this );
+	auto pFileLabel = new QLabel( tr( "File:" ), pRightPanel );
 
 	pTitleDesciptionLayout->addWidget( pFileLabel );
 
 	auto pFileLayout = new QHBoxLayout();
 
-	m_pBSPFileLineEdit = new QLineEdit( this );
+	m_pBSPFileLineEdit = new QLineEdit( pRightPanel );
 	m_pBSPFileLineEdit->setReadOnly( true );
 
 	pFileLayout->addWidget( m_pBSPFileLineEdit );
 
-	auto pBSPBrowseButton = new QPushButton( tr( "Browse..." ), this );
+	auto pBSPBrowseButton = new QPushButton( tr( "Browse..." ), pRightPanel );
 
 	pFileLayout->addWidget( pBSPBrowseButton );
 
 	pTitleDesciptionLayout->addLayout( pFileLayout );
 
-	pDialogLayout->addLayout( pTitleDesciptionLayout, 0, 1, 4, 1, Qt::AlignLeft );
+	pMainSplitter->addWidget( pRightPanel );
+	pMainSplitter->setStretchFactor( 0, 1 );
+	pMainSplitter->setStretchFactor( 1, 2 );
+	pMainSplitter->setSizes( { 239, 400 } );
 
-	pDialogLayout->setAlignment( Qt::AlignTop );
+	pDialogLayout->addWidget( pMainSplitter, 0, 0 );
+	pDialogLayout->setRowStretch( 0, 1 );
+
+	m_pSteamToSAgreement = new QCheckBox( tr( "I accept the terms of the Steam Workshop Contribution Agreement." ), this );
+
+	pDialogLayout->addWidget( m_pSteamToSAgreement, 1, 0 );
+
+	auto pButtonBox = new QDialogButtonBox( Qt::Orientation::Horizontal, this );
+	m_pOKButton = pButtonBox->addButton( tr( "Upload" ), QDialogButtonBox::ApplyRole );
+	auto pCloseButton = pButtonBox->addButton( tr( "Cancel" ), QDialogButtonBox::RejectRole );
+	pDialogLayout->addWidget( pButtonBox, 2, 0, Qt::AlignLeft );
+
+	this->resize( 680, 360 );
 
 	connect( pThumbnailBrowseButton, &QPushButton::clicked, this, &CMapUploader::onBrowseThumbnailClicked );
 
@@ -970,13 +1008,11 @@ CMapUploader::RemoteStorageUploadError CMapUploader::uploadToSteamLocalStorage( 
 void CMapUploader::setEditItem( const CMainView::FullUGCDetails &itemDetails )
 {
 	this->setWindowTitle( "Edit existing workshop map" );
-	QPixmap tempMap = QPixmap( itemDetails.thumbnailDetails );
-	tempMap = tempMap.scaled( 239, 134, Qt::IgnoreAspectRatio );
 	auto standardDetails = itemDetails.standardDetails;
 	m_EditPreviewCount = itemDetails.additionalDetails.previewItemCount;
 	m_pAdvancedOptionsButton->setEnabled( true );
 	m_pAdvancedOptionsButton->setToolTip( "" );
-	m_pPreviewImageLabel->setPixmap( tempMap );
+	m_pPreviewImageLabel->setSourcePixmap( QPixmap( itemDetails.thumbnailDetails ) );
 	m_pSteamToSAgreement->setChecked( true );
 	m_pOKButton->setText( "Update" );
 	m_pTitleLine->setText( standardDetails.m_rgchTitle );
@@ -1097,7 +1133,7 @@ void CMapUploader::onBrowseThumbnailClicked()
 			break;
 	}
 
-	m_pPreviewImageLabel->setPixmap( thumbnailScaledFilepath );
+	m_pPreviewImageLabel->setSourcePixmap( QPixmap( thumbnailScaledFilepath ) );
 	m_EditedThumbnail = true;
 	m_ThumbnailPath = thumbnailScaledFilepath;
 }

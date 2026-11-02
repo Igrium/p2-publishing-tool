@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mainview.h"
+#include "scaledimagelabel.h"
 #include "steam_api.h"
 
 #include <QCheckBox>
@@ -31,7 +32,7 @@ namespace ui
 	public:
 		QListWidget *m_pMediaListWidget;
 		QListWidgetItem *m_pImageVideoSeparator;
-		QLabel *m_pImagePreviewLabel;
+		CScaledImageLabel *m_pImagePreviewLabel;
 		QGroupBox *m_pPatchNoteGroupBox;
 		QListWidget *m_pTagsListWidget;
 		QComboBox *m_pVisibilityComboBox;
@@ -100,7 +101,7 @@ namespace ui
 		QTextEdit *m_pDescriptionTextEdit;
 		QLineEdit *m_pBSPFileLineEdit;
 		QCheckBox *m_pSteamToSAgreement;
-		QLabel *m_pPreviewImageLabel;
+		CScaledImageLabel *m_pPreviewImageLabel;
 		QString m_ThumbnailPath;
 		CAdvancedOptionsDialog *m_pAdvancedOptions;
 

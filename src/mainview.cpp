@@ -1,6 +1,7 @@
 #include "mainview.h"
 
 #include "mapuploader.h"
+#include "panelsplitter.h"
 
 #include <QCheckBox>
 #include <QDir>
@@ -28,7 +29,10 @@ CMainView::CMainView( QWidget *pParent ) :
 
 	auto pMainViewLayout = new QGridLayout( this );
 
-	m_pWorkshopItemTree = new QTreeWidget( this );
+	// Workshop list on the left, action buttons on the right, split by a draggable handle.
+	auto pMainSplitter = createPanelSplitter( Qt::Horizontal, this );
+
+	m_pWorkshopItemTree = new QTreeWidget( pMainSplitter );
 
 	auto workshopTreeListTitles = QStringList();
 	workshopTreeListTitles.append( "Title" );
@@ -42,13 +46,13 @@ CMainView::CMainView( QWidget *pParent ) :
 	m_pWorkshopItemTree->setColumnWidth( 0, 600 / 3 );
 	m_pWorkshopItemTree->setColumnWidth( 1, 600 / 3 );
 	m_pWorkshopItemTree->setColumnWidth( 2, 600 / 3 );
-	m_pWorkshopItemTree->setMinimumSize( 640, 200 );
+	m_pWorkshopItemTree->setMinimumSize( 200, 120 );
 
-	pMainViewLayout->addWidget( m_pWorkshopItemTree, 0, 0, 4, 6 );
+	pMainSplitter->addWidget( m_pWorkshopItemTree );
 
 	auto pTimezoneLabel = new QLabel( "Timezone:", this );
 
-	pMainViewLayout->addWidget( pTimezoneLabel, 5, 0, Qt::AlignLeft | Qt::AlignBottom );
+	pMainViewLayout->addWidget( pTimezoneLabel, 1, 0, Qt::AlignLeft | Qt::AlignBottom );
 
 	m_pTimezoneComboBox = new QComboBox( this );
 	foreach( auto timezoneID, QTimeZone::availableTimeZoneIds() )
@@ -57,9 +61,11 @@ CMainView::CMainView( QWidget *pParent ) :
 	QDateTime time = QDateTime::currentDateTime();
 	m_pTimezoneComboBox->setCurrentIndex( QTimeZone::availableTimeZoneIds().indexOf( time.timeZone().id() ) );
 
-	pMainViewLayout->addWidget( m_pTimezoneComboBox, 5, 1, Qt::AlignLeft | Qt::AlignBottom );
+	pMainViewLayout->addWidget( m_pTimezoneComboBox, 1, 1, Qt::AlignLeft | Qt::AlignBottom );
 
-	auto pButtonLayout = new QVBoxLayout();
+	auto pButtonPanel = new QWidget( pMainSplitter );
+	auto pButtonLayout = new QVBoxLayout( pButtonPanel );
+	pButtonLayout->setContentsMargins( 0, 0, 0, 0 );
 
 	auto pAddButton = new QPushButton( "Add", this );
 	pButtonLayout->addWidget( pAddButton );
@@ -82,8 +88,17 @@ CMainView::CMainView( QWidget *pParent ) :
 	m_pPageBox->setMaximum(999); //If you have more than 999 pages. Seek help.
 	pageLayout->addWidget( m_pPageBox );
 	pButtonLayout->addLayout(pageLayout);
+	pButtonLayout->addStretch( 1 );
 
-	pMainViewLayout->addLayout( pButtonLayout, 0, 6, Qt::AlignLeft );
+	pMainSplitter->addWidget( pButtonPanel );
+	pMainSplitter->setStretchFactor( 0, 1 );
+	pMainSplitter->setStretchFactor( 1, 0 );
+
+	pMainViewLayout->addWidget( pMainSplitter, 0, 0, 1, 3 );
+	pMainViewLayout->setRowStretch( 0, 1 );
+	pMainViewLayout->setColumnStretch( 2, 1 );
+
+	this->resize( 760, 320 );
 
 	m_CallbackTimer.setSingleShot( false );
 	connect( &m_CallbackTimer, &QTimer::timeout, this, SteamAPI_RunCallbacks );
