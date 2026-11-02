@@ -21,6 +21,13 @@ void shutdown_steam()
 
 int main( int argc, char **argv )
 {
+#ifdef __linux__
+	// Use the desktop's native file chooser (KDE/Dolphin, GTK, ...) via xdg-desktop-portal,
+	// unless the user has explicitly chosen a platform theme themselves.
+	if ( qEnvironmentVariableIsEmpty( "QT_QPA_PLATFORMTHEME" ) )
+		qputenv( "QT_QPA_PLATFORMTHEME", "xdgdesktopportal" );
+#endif
+
 	auto app = new QApplication( argc, argv );
 	QString APP_ID = "644";
 

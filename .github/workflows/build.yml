@@ -45,6 +45,7 @@ jobs:
             ${{github.workspace}}/build/tls/*.so*
             ${{github.workspace}}/build/imageformats/*.so*
             ${{github.workspace}}/build/platforms/*.so*
+            ${{github.workspace}}/build/platformthemes/*.so*
             ${{github.workspace}}/build/*.so*
 
   build-msvc:
