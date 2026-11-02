@@ -17,3 +17,7 @@
 ## The rewrite!
 
 ### I have rewritten this tool from scratch to improve upon it, the old one was unclear, bug ridden, and didn't work most of the time and nobody knew why, even I didn't until I spend a day debugging it. That shouldn't be a thing! so I rewrote it with comprehensive error handling and cleaner, self commenting code in mind!
+
+## Building
+
+See [BUILDING.md](BUILDING.md) for how to build the tool on Linux and Windows.
